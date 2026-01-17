@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Yahooショッピング 商品検索</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <h1>Yahooショッピング 商品検索</h1>
+      <p>カテゴリとキーワードを指定して商品一覧とCSVを取得します。</p>
+    </header>
+
+    <section class="panel">
+      <form method="post" action="/search">
+        <div class="field">
+          <label for="category">カテゴリ</label>
+          <select id="category" name="category_id" required>
+            <option value="">読み込み中...</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="query">キーワード</label>
+          <input id="query" name="query" type="text" required maxlength="100" placeholder="例: ワイヤレスイヤホン">
+        </div>
+        <button type="submit" class="btn">検索</button>
+      </form>
+    </section>
+
+    {% if message %}
+    <section class="panel">
+      <p class="message">{{ message }}</p>
+      {% if csv_path %}
+      <p class="muted">保存先: {{ csv_path }}</p>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    <section class="panel">
+      <h2>検索結果</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>商品名</th>
+              <th>価格</th>
+              <th>ショップ</th>
+              <th>レビュー</th>
+              <th>URL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in results %}
+            <tr>
+              <td>{{ item.name | default(item.Name) | default('') }}</td>
+              <td>{{ item.price | default(item.Price) | default('') }}</td>
+              <td>{{ item.seller.name | default(item.Store.name) | default('') }}</td>
+              <td>
+                {{ item.review.rate | default(item.Review.Rate) | default('') }}
+                ({{ item.review.count | default(item.Review.Count) | default('') }})
+              </td>
+              <td>
+                {% set url = item.url | default(item.Url) %}
+                {% if url %}
+                <a href="{{ url }}" target="_blank" rel="noopener">商品ページ</a>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="muted">結果はありません</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    async function loadCategories() {
+      const select = document.getElementById("category");
+      try {
+        const res = await fetch("/categories");
+        const data = await res.json();
+        select.innerHTML = "";
+        if (!res.ok || data.error) {
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = data.error || "カテゴリ取得に失敗しました";
+          select.appendChild(opt);
+          return;
+        }
+        const empty = document.createElement("option");
+        empty.value = "";
+        empty.textContent = "選択してください";
+        select.appendChild(empty);
+        for (const cat of data.categories || []) {
+          if (!cat.id || !cat.name) continue;
+          const opt = document.createElement("option");
+          opt.value = cat.id;
+          opt.textContent = cat.name;
+          select.appendChild(opt);
+        }
+      } catch (err) {
+        select.innerHTML = "";
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "カテゴリ取得に失敗しました";
+        select.appendChild(opt);
+      }
+    }
+    loadCategories();
+  </script>
+</body>
+</html>
